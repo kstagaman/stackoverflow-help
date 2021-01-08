@@ -1,6 +1,5 @@
 R file size issues
 ================
-Keaton Stagaman
 1/8/2021
 
 Below reads in a phyloseq object with a very large community matrix (47
