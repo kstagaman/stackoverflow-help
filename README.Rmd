@@ -1,0 +1,58 @@
+---
+title: "R file size issues"
+author: "Keaton Stagaman"
+date: "1/8/2021"
+output: github_document
+---
+
+Below reads in a phyloseq object with a very large community matrix (47 x 1,060,929)
+
+```{r setup, echo=TRUE}
+library(phyloseq)
+
+obj.size <- function(x) {paste("Object size:", format(object.size(x), units = "auto"))}
+f.size <- function(x) {paste("File size:", round(file.size(x) / 1024^2, 1), "Mb")}
+
+ps <- readRDS("example_phyloseq.rds")
+```
+
+Next, I create a distance matrix to determine community dissimilarities between samples
+It should result in a 47 x 47 matrix
+
+```{r create-distance-matrix, echo=TRUE}
+dist.mat <- phyloseq::distance(ps, method = "bray") # creating a distance matrix
+attributes(dist.mat)$Size
+```
+
+Okay, as expected, but...
+```{r issue1}
+cat(obj.size(dist.mat), sep = "\n")
+```
+
+This is oddly big for a distance matrix of this size (like orders of magnitude larger)
+
+After investigating I realize that this is because `attributes(dist.mat)$call` is huge, because it includes every single value from the original community matrix.
+
+```{r possible-solution}
+dist.mat.small <- dist.mat
+attributes(dist.mat.small)$call <- NULL
+cat(obj.size(dist.mat.small), sep = "\n")
+```
+
+Okay, so that's looking good. Much closer to what I'd expect for the size. But...when I try to save...
+
+```{r issue3}
+saveRDS(dist.mat, file = "distance_matrix_original.rds")
+saveRDS(dist.mat.small, file = "distance_matrix_small.rds")
+
+cat(f.size("distance_matrix_original.rds"), sep = "\n")
+cat(f.size("distance_matrix_small.rds"), sep = "\n")
+```
+
+What's happening here? Why are the file sizes the same for objects of very different size?
+
+```{r cleanup, include=FALSE}
+file.remove("distance_matrix_original.rds")
+file.remove("distance_matrix_small.rds")
+```
+
